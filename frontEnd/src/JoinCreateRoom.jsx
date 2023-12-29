@@ -1,11 +1,16 @@
 import React, { useState } from "react";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { toast } from "react-toastify";
-import {setUserNo, setRoomJoined, setUser, setUsers} from "./redux/userSlice"
+import {
+  setUserNo,
+  setRoomJoined,
+  setUser,
+  setUsers,
+} from "./redux/userSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { uuid } from "./utils/idGeneretor";
 
-const JoinCreateRoom = () => {
+const JoinCreateRoom: React.FC = () => {
   const [roomId, setRoomId] = useState(uuid());
   const [name, setName] = useState("");
   const [joinName, setJoinName] = useState("");
@@ -13,30 +18,35 @@ const JoinCreateRoom = () => {
 
   const dispatch = useDispatch();
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return toast.dark("Please enter your name!");
 
-    dispatch(setUser({
-      roomId,
-      userId: uuid(),
-      userName: name,
-      host: true,
-      presenter: true,
-    }));
+    dispatch(
+      setUser({
+        roomId,
+        userId: uuid(),
+        userName: name,
+        host: true,
+        presenter: true,
+      })
+    );
     dispatch(setRoomJoined(true));
   };
-  const handleJoinSubmit = (e) => {
+
+  const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinName) return toast.dark("Please enter your name!");
 
-    dispatch(setUser({
-      roomId: joinRoomId,
-      userId: uuid(),
-      userName: joinName,
-      host: false,
-      presenter: false,
-    }));
+    dispatch(
+      setUser({
+        roomId: joinRoomId,
+        userId: uuid(),
+        userName: joinName,
+        host: false,
+        presenter: false,
+      })
+    );
     dispatch(setRoomJoined(true));
   };
 
@@ -85,7 +95,9 @@ const JoinCreateRoom = () => {
                 &nbsp;&nbsp;
                 <CopyToClipboard
                   text={roomId}
-                  onCopy={() => toast.success("Room Id Copied To Clipboard!")}
+                  onCopy={() =>
+                    toast.success("Room Id Copied To Clipboard!")
+                  }
                 >
                   <button
                     className="btn btn-outline-dark border-0 btn-sm"
@@ -140,3 +152,4 @@ const JoinCreateRoom = () => {
 };
 
 export default JoinCreateRoom;
+

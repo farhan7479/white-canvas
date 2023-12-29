@@ -1,8 +1,30 @@
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef, MouseEvent } from "react";
 import rough from "roughjs/bundled/rough.esm";
+import { Socket } from "socket.io-client";
 
 const generator = rough.generator();
-const Canvas = ({
+
+interface CanvasProps {
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+  ctx: React.MutableRefObject<CanvasRenderingContext2D | null>;
+  color: string;
+  setElements: React.Dispatch<React.SetStateAction<CanvasElement[]>>;
+  elements: CanvasElement[];
+  tool: string;
+  socket: Socket;
+}
+
+interface CanvasElement {
+  offsetX: number;
+  offsetY: number;
+  width?: number;
+  height?: number;
+  stroke: string;
+  element: string;
+  path?: number[][];
+}
+
+const Canvas: React.FC<CanvasProps> = ({
   canvasRef,
   ctx,
   color,
@@ -14,28 +36,30 @@ const Canvas = ({
   const [isDrawing, setIsDrawing] = useState(false);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = canvasRef.current!;
     canvas.height = window.innerHeight * 2;
-    
     canvas.width = window.innerWidth * 2;
     canvas.style.width = `${window.innerWidth}px`;
     canvas.style.height = `${window.innerHeight}px`;
     const context = canvas.getContext("2d");
 
-    context.strokeWidth = 5;
-    context.scale(2, 2);
-    context.lineCap = "round";
-    context.strokeStyle = color;
-    context.lineWidth = 5;
-    ctx.current = context;
-    
+    if (context) {
+      context.strokeWidth = 5;
+      context.scale(2, 2);
+      context.lineCap = "round";
+      context.strokeStyle = color;
+      context.lineWidth = 5;
+      ctx.current = context;
+    }
   }, []);
 
   useEffect(() => {
-    ctx.current.strokeStyle = color;
+    if (ctx.current) {
+      ctx.current.strokeStyle = color;
+    }
   }, [color]);
 
-  const handleMouseDown = (e) => {
+  const handleMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     const { offsetX, offsetY } = e.nativeEvent;
 
     if (tool === "pencil") {
@@ -60,45 +84,47 @@ const Canvas = ({
   };
 
   useLayoutEffect(() => {
-    const roughCanvas = rough.canvas(canvasRef.current);
-    if (elements.length > 0) {
+    const roughCanvas = rough.canvas(canvasRef.current!);
+    if (elements.length > 0 && ctx.current) {
       ctx.current.clearRect(
         0,
         0,
-        canvasRef.current.width,
-        canvasRef.current.height
+        canvasRef.current!.width,
+        canvasRef.current!.height
       );
     }
-    elements.forEach((ele, i) => {
-      if (ele.element === "rect") {
+    elements.forEach((ele) => {
+      if (ele.element === "rect" && ctx.current) {
         roughCanvas.draw(
-          generator.rectangle(ele.offsetX, ele.offsetY, ele.width, ele.height, {
+          generator.rectangle(ele.offsetX, ele.offsetY, ele.width || 0, ele.height || 0, {
             stroke: ele.stroke,
             roughness: 0,
             strokeWidth: 5,
           })
         );
-      } else if (ele.element === "line") {
+      } else if (ele.element === "line" && ctx.current) {
         roughCanvas.draw(
-          generator.line(ele.offsetX, ele.offsetY, ele.width, ele.height, {
+          generator.line(ele.offsetX, ele.offsetY, ele.width || 0, ele.height || 0, {
             stroke: ele.stroke,
             roughness: 0,
             strokeWidth: 5,
           })
         );
-      } else if (ele.element === "pencil") {
-        roughCanvas.linearPath(ele.path, {
+      } else if (ele.element === "pencil" && ctx.current) {
+        roughCanvas.linearPath(ele.path || [], {
           stroke: ele.stroke,
           roughness: 0,
           strokeWidth: 5,
         });
       }
     });
-    const canvasImage = canvasRef.current.toDataURL();
-    socket.emit("drawing", canvasImage);
-  }, [elements]);
+    const canvasImage = canvasRef.current!.toDataURL();
+    if (canvasImage) {
+      socket.emit("drawing", canvasImage);
+    }
+  }, [elements, socket]);
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!isDrawing) {
       return;
     }
@@ -141,7 +167,7 @@ const Canvas = ({
             ? {
                 offsetX: ele.offsetX,
                 offsetY: ele.offsetY,
-                path: [...ele.path, [offsetX, offsetY]],
+                path: [...(ele.path || []), [offsetX, offsetY]],
                 stroke: ele.stroke,
                 element: ele.element,
               }
@@ -150,11 +176,10 @@ const Canvas = ({
       );
     }
   };
+
   const handleMouseUp = () => {
     setIsDrawing(false);
   };
-
-  
 
   return (
     <div
@@ -165,9 +190,9 @@ const Canvas = ({
       onMouseUp={handleMouseUp}
     >
       <canvas ref={canvasRef} />
-      
     </div>
   );
 };
 
 export default Canvas;
+

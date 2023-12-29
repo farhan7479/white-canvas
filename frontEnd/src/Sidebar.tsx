@@ -2,17 +2,27 @@ import React, { useRef } from "react";
 import { Socket } from "socket.io-client";
 import { useSelector } from 'react-redux';
 
-const Sidebar = ({socket}) => {
-  const sideBarRef = useRef(null);
+interface SidebarProps {
+  socket: Socket;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ socket }) => {
+  const sideBarRef = useRef<HTMLDivElement | null>(null);
 
   const openSideBar = () => {
-    sideBarRef.current.style.left = 0;
-  };
-  const closeSideBar = () => {
-    sideBarRef.current.style.left = -100 + "%";
+    if (sideBarRef.current) {
+      sideBarRef.current.style.left = "0";
+    }
   };
 
-  const { users } = useSelector((state) => state.user);
+  const closeSideBar = () => {
+    if (sideBarRef.current) {
+      sideBarRef.current.style.left = "-100%";
+    }
+  };
+
+  const { users } = useSelector((state: RootState) => state.user);
+
   return (
     <>
       <button
@@ -52,3 +62,10 @@ const Sidebar = ({socket}) => {
 };
 
 export default Sidebar;
+
+interface RootState {
+  user: {
+    users: Array<{ id: string; username: string }>;
+  };
+}
+

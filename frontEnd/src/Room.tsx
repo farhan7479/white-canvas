@@ -3,35 +3,43 @@ import { toast } from "react-toastify";
 import Canvas from "./Canvas";
 import { setUserNo, setUsers } from "./redux/userSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { Socket } from "socket.io-client";
 
-const Room = ({ socket }) => {
-  const canvasRef = useRef(null);
-  const ctx = useRef(null);
-  const [color, setColor] = useState("#000000");
-  const [elements, setElements] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [tool, setTool] = useState("pencil");
+interface RoomProps {
+  socket: Socket;
+}
+
+const Room: React.FC<RoomProps> = ({ socket }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const ctx = useRef<CanvasRenderingContext2D | null>(null);
+  const [color, setColor] = useState<string>("#000000");
+  const [elements, setElements] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [tool, setTool] = useState<string>("pencil");
   const dispatch = useDispatch();
-  const { userNo } = useSelector((state) => state.user);
+  const { userNo } = useSelector((state: RootState) => state.user);
 
   useEffect(() => {
-    socket.on("message", (data) => {
+    socket.on("message", (data: { message: string }) => {
       toast.info(data.message);
     });
-  }, []);
+  }, [socket]);
+
   useEffect(() => {
-    socket.on("users", (data) => {
+    socket.on("users", (data: any) => {
       dispatch(setUsers(data));
       dispatch(setUserNo(data.length));
     });
-  }, []);
+  }, [dispatch, socket]);
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-    context.fillStyle = "white";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    setElements([]);
+    const context = canvas?.getContext("2d");
+    if (context) {
+      context.fillStyle = "white";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      setElements([]);
+    }
   };
 
   const undo = () => {
@@ -43,6 +51,7 @@ const Room = ({ socket }) => {
       prevElements.filter((ele, index) => index !== elements.length - 1)
     );
   };
+
   const redo = () => {
     setElements((prevElements) => [
       ...prevElements,
@@ -54,12 +63,16 @@ const Room = ({ socket }) => {
   };
 
   const handleDownload = () => {
-    const canvasImage = canvasRef.current.toDataURL("image/png");
-    const downloadLink = document.createElement("a");
-    downloadLink.href = canvasImage;
-    downloadLink.download = "canvas_image.png";
-    downloadLink.click();
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const canvasImage = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.href = canvasImage;
+      downloadLink.download = "canvas_image.png";
+      downloadLink.click();
+    }
   };
+
   return (
     <div className="container-fluid">
       <div className="row">
@@ -87,8 +100,7 @@ const Room = ({ socket }) => {
               id="pencil"
               value="pencil"
               checked={tool === "pencil"}
-              onClick={(e) => setTool(e.target.value)}
-              readOnly={true}
+              onChange={() => setTool("pencil")}
             />
             <label className="form-check-label" htmlFor="pencil">
               Pencil
@@ -102,8 +114,7 @@ const Room = ({ socket }) => {
               id="line"
               value="line"
               checked={tool === "line"}
-              onClick={(e) => setTool(e.target.value)}
-              readOnly={true}
+              onChange={() => setTool("line")}
             />
             <label className="form-check-label" htmlFor="line">
               Line
@@ -117,8 +128,7 @@ const Room = ({ socket }) => {
               id="rect"
               value="rect"
               checked={tool === "rect"}
-              onClick={(e) => setTool(e.target.value)}
-              readOnly={true}
+              onChange={() => setTool("rect")}
             />
             <label className="form-check-label" htmlFor="rect">
               Rectangle
@@ -131,7 +141,7 @@ const Room = ({ socket }) => {
             type="button"
             className="btn btn-outline-primary"
             disabled={elements.length === 0}
-            onClick={() => undo()}
+            onClick={undo}
           >
             Undo
           </button>
@@ -140,7 +150,7 @@ const Room = ({ socket }) => {
             type="button"
             className="btn btn-outline-primary ml-1"
             disabled={history.length < 1}
-            onClick={() => redo()}
+            onClick={redo}
           >
             Redo
           </button>
@@ -184,3 +194,10 @@ const Room = ({ socket }) => {
 };
 
 export default Room;
+
+interface RootState {
+  user: {
+    userNo: number;
+  };
+}
+
